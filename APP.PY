@@ -6,27 +6,32 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# IMPORTANT: API key must be set in Render ENV variables
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-@app.route("/", methods=["GET"])
+@app.route("/")
 def home():
-    return "Backend is alive", 200
+    return "Backend is running"
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    try:
-        data = request.get_json()
-        question = data.get("question", "")
+    data = request.get_json()
+    question = data.get("question", "")
 
-        chat = client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=[{"role": "user", "content": question}]
+    if not question:
+        return jsonify({"answer": "Please ask a question."})
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": question}
+            ]
         )
 
-        return jsonify({"answer": chat.choices[0].message.content})
+        answer = completion.choices[0].message.content
+        return jsonify({"answer": answer})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+        return jsonify({"answer": f"Server error: {str(e)}"})
