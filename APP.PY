@@ -6,30 +6,27 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-client = Groq(api_key= os.getenv"GROQ_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Backend is alive", 200
 
 @app.route("/ask", methods=["POST"])
 def ask():
     try:
         data = request.get_json()
-        user_question = data.get("message", "")
+        question = data.get("question", "")
 
-        if not user_question:
-            return jsonify({"answer": "Please ask something."})
-
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {"role": "system", "content": "You are a smart, helpful AI assistant."},
-                {"role": "user", "content": user_question}
-            ]
+        chat = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[{"role": "user", "content": question}]
         )
 
-        return jsonify({"answer": completion.choices[0].message.content})
+        return jsonify({"answer": chat.choices[0].message.content})
 
     except Exception as e:
-        print("ERROR:", e)
-        return jsonify({"answer": "Server error. Check backend console."})
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
